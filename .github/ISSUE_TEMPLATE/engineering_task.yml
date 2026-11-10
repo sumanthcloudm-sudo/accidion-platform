@@ -1,0 +1,80 @@
+name: Engineering task
+description: Define a bounded engineering change for a developer or AI coding assistant.
+title: "task: "
+labels:
+  - engineering
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Keep the task small and reviewable. This issue describes requested work; it does not authorize prohibited actions or bypass repository approval requirements.
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+      description: State the specific result to deliver.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context and relevant files
+      description: Include relevant services, paths, architecture documents, and applicable ADRs.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List testable completion conditions.
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints and non-goals
+      description: State what must not change. Include compatibility and scope limits.
+    validations:
+      required: true
+  - type: textarea
+    id: security
+    attributes:
+      label: Security and tenant-isolation considerations
+      description: Address authentication, authorization, tenant context, sensitive data, audit, and failure behaviour. Write "Unknown" where not assessed.
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Required tests and validation
+      description: Specify relevant unit, integration, contract, tenant-isolation, and repository checks.
+    validations:
+      required: true
+  - type: checkboxes
+    id: approvals
+    attributes:
+      label: Change approval gates
+      description: Check all that apply. Sensitive changes require maintainer approval before implementation.
+      options:
+        - label: Dependency or build-tool change
+        - label: Database schema or migration
+        - label: API, event, or data contract
+        - label: Authentication, authorization, or cryptography
+        - label: Tenant isolation or access-control boundary
+        - label: CI/CD, workflow, or IaC
+        - label: None of the above (confirm before implementation if scope changes)
+          required: false
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Repository safety
+      options:
+        - label: No production access, secrets, deployment, infrastructure apply/destroy, merge, approval, or branch-protection bypass is requested.
+          required: true
+        - label: AI Copilot remains disabled by default and non-autonomous.
+          required: true
+        - label: Kubernetes remains inactive unless an applicable ADR is accepted.
+          required: true
