@@ -25,7 +25,7 @@ The proposed integration point is a host-owned audit capability once its owner d
 - AI event metadata is not host authorization evidence and cannot grant access or approve an operation.
 - Do not record raw prompts, raw model responses, credentials, secrets, or unnecessary personal or identity data by default.
 - Tenant and actor references must come from trusted authenticated host context; untrusted request or provider fields are not authoritative.
-- Copilot remains disabled by default. Audit documentation does not enable or authorize AI processing.
+- Copilot remains disabled by default. Only if separately approved and enabled may its permitted scope be **OBSERVE / REASON / RECOMMEND**; it is advisory-only and cannot independently authorize access, approve requests, modify entitlements, execute provisioning, or perform autonomous actions. Host authorization, deterministic policy evaluation, human approvals, and target-side verification remain authoritative. This describes a proposed boundary, not implemented or enabled behavior; this audit documentation does not enable or authorize AI processing.
 
 ## Approval dependencies
 
