@@ -26,6 +26,7 @@ The intended boundary is a host-owned `acc-audit` capability after the host audi
 4. **No AI authority:** An event describes an AI operation; it is not an authorization decision, access approval, or evidence that a suggested action occurred.
 5. **Explicit uncertainty:** A missing, conflicting, or untrusted field is not repaired into a trusted value. Reject or safely omit it according to the host-approved contract.
 6. **No implied approval:** All names, fields, status values, and examples below are proposals. Provider, model, route, use case, schema version, and retention are not approved by appearing here.
+7. **Disabled and advisory-only:** Copilot remains disabled by default. Only if separately approved and enabled may it observe, reason, and recommend; its output remains advisory and cannot authorize, approve, or execute an operation.
 
 ## 3. Proposed event envelope
 
@@ -218,13 +219,16 @@ Test frameworks, test paths, implementation locations, and CI integration are no
 
 ## 11. Dependencies and approvals
 
-| Owner | Decisions required |
-|---|---|
-| Product | MVP eligibility; approved use cases and auditable lifecycle stages; business need for human-review metadata; user-visible and operational consequences of audit failure. |
-| Security | Trusted producer/context requirements; tenant isolation; threat model; integrity, access, incident, and fail-closed requirements; whether audit acknowledgment gates provider invocation. |
-| Privacy/Data Governance | Permitted identifiers and classifications; minimization; access, retention, deletion, legal hold, and any exception for content capture. |
-| Architecture | Host `acc-audit` integration boundary; event/schema ownership and versioning; compatibility; avoid introducing a separate service, database, bus, transport, or deployment. |
-| Host audit owner | Existing interface, if any; authoritative envelope and validation; producer authentication; acknowledgment and delivery semantics; idempotency/order; integrity; access and tenant scoping; retention/deletion; outage handling. |
-| Maintainers | Approval for event-format, API, tenant/security boundary, privacy, retention, dependency, CI, or operational changes as required by repository governance. |
+The roles below are required decision owners or reviewers, not evidence that a named owner has been assigned or that approval has been obtained. The repository currently identifies no host `acc-audit` owner. All listed decisions remain outstanding unless separately recorded through the applicable approval process.
 
-No approval is implied by this proposal. ADR-002, ADR-003, ADR-007, and ADR-008 remain subject to their own decision owners and statuses; this document does not modify them.
+| Owner | Decisions requiring explicit approval | Approval state / dependency |
+|---|---|---|
+| Product | Whether an AI audit contract or runtime integration is MVP-eligible; approved use cases and lifecycle stages to audit; whether human-review metadata is needed; user-visible and operational consequences of audit failure. | Pending. Product must establish the use-case and scope boundary before a runtime contract is finalized. |
+| Security | Trusted producer, tenant, and actor context; threat model; tenant isolation; integrity and access controls; safe failure behavior; whether audit acknowledgment gates provider invocation. | Pending. Security review is required before contract approval or runtime implementation. |
+| Privacy / Data Governance | Permitted identifiers and classifications; minimization; tenant-scoped access; retention, deletion, legal hold; and any exception to excluding content from events. | Pending. Privacy/data-governance approval is required before collection, retention, or any content exception. |
+| Architecture | The integration boundary with host `acc-audit`; ownership and versioning of the authoritative schema; compatibility and lifecycle semantics; whether any existing host capability can support the requirements. | Pending. Must not be used to select or imply an unapproved transport, persistence layer, separate service, event bus, or deployment. |
+| Host `services/acc-audit` owner | Whether an applicable host interface exists; authoritative envelope and validation; producer authentication; acknowledgment and delivery semantics; idempotency, ordering, and integrity; tenant-scoped access; retention/deletion; outage behavior. | Owner not identified in the repository; approval pending. The host owner must establish the real boundary and semantics before this proposal can become an integration contract. |
+| Repository maintainers | Whether this documentation is acceptable as a proposal; approval before implementation changes to event/API formats, tenant or security boundaries, privacy/retention behavior, dependencies, CI, or operations, as required by repository governance. | Pending. Review of this document does not itself approve implementation or supersede required domain-owner approvals. |
+| Relevant ADR owners | **ADR-002:** architecture owner / CTO (to be assigned) must approve any reliance on its proposed messaging direction; it does not select an audit transport or schema. **ADR-003:** architecture owner / data owner (to be assigned) must approve any persistence decision; it does not approve an audit database, schema, or retention policy. **ADR-007:** Product owner / Security owner (to be assigned) must approve Copilot scope and disabled-by-default, non-autonomous boundaries. **ADR-008:** Product owner / delivery owner (to be assigned) must approve MVP scope and whether related runtime work is in scope. | All four ADRs are Proposed with approval pending. Their owners must use their respective ADR processes; this document does not change their status or claim those decisions are approved. |
+
+These approvals are related but not interchangeable. In particular, ADR-002 and ADR-003 do not authorize a transport or persistence choice for AI audit; ADR-007 and ADR-008 do not approve this event contract or enable Copilot. Transport, acknowledgment, persistence, retention, and audit-failure policy remain undecided until the responsible owners approve them. No approval is implied by this proposal.
