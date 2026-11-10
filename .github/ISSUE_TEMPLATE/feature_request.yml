@@ -1,0 +1,59 @@
+name: Feature request
+description: Propose a product capability or improvement for Accidion Identity Cloud.
+title: "feature: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the user problem and desired outcome. A feature request is not approval to change architecture, contracts, security controls, or MVP scope.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Who experiences this problem, and why does it matter?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: What should a user be able to do?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List observable conditions that would demonstrate completion.
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Proposed delivery scope
+      options:
+        - MVP must-have
+        - MVP should-have
+        - Future / deferred
+        - Unsure
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Security, tenant isolation, and data impact
+      description: Note any known impact on authorization, tenant boundaries, identity data, audit, privacy, or compliance. Write "Unknown" if not assessed.
+    validations:
+      required: true
+  - type: textarea
+    id: references
+    attributes:
+      label: Related documentation or ADRs
+      description: Link relevant architecture docs, issues, or ADRs. Proposed ADRs are not accepted decisions.
+    validations:
+      required: false
