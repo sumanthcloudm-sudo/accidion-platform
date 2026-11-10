@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+.terraform/
+.tofu/
+.venv/
+venv/
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
