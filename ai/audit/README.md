@@ -31,4 +31,6 @@ The proposed integration point is a host-owned audit capability once its owner d
 
 Any future contract or implementation requires decisions from Product, Security, Privacy/Data Governance, Architecture, the host audit owner, and maintainers as applicable. In particular, the host audit owner must first identify the actual integration boundary and its semantics. Data retention, audit integrity, tenant-scoped access, and audit-failure behavior require explicit approval before implementation.
 
+The [approval-owner and decision matrix](./AI_AUDIT_EVENT_CONTRACT.md#11-dependencies-and-approvals) in Section 11 of the contract details these dependencies. The host audit owner has not yet been identified, and identifying that owner remains an outstanding dependency.
+
 All proposals remain subject to root `AGENTS.md`, `RULES.md`, the architecture baseline, accepted ADRs, and applicable security policies. Proposed ADRs are not approvals.
