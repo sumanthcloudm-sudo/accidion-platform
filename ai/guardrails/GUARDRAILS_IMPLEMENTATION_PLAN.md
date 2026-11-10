@@ -1,6 +1,6 @@
 # Accidion AI Guardrails Implementation Plan
 
-**Status: PROPOSED - NOT APPROVED**
+**Status: PROPOSED — NOT APPROVED**
 
 This document is a read-only audit deliverable and a proposed implementation plan. It does not approve an architecture, define an accepted policy, implement a guardrail, authorize a provider or data transfer, or enable Accidion AI Copilot. The product Copilot remains disabled by default.
 
@@ -9,6 +9,7 @@ This document is a read-only audit deliverable and a proposed implementation pla
 The guardrails directory currently contains:
 
 - `ai/guardrails/README.md` — proposed governance and safety guidance.
+- `ai/guardrails/GUARDRAILS_IMPLEMENTATION_PLAN.md` — this proposed, documentation-only coverage and implementation plan; it does not implement guardrails.
 - `ai/guardrails/.gitkeep` — scaffold placeholder.
 
 There is no executable guardrail implementation, configuration, or guardrail-specific test in `ai/guardrails/`. The repository does have five synthetic evaluation case descriptions, an offline structural catalog validator, and 19 unit tests for that validator. Those tests validate fixture shape; they do not execute or verify product guardrail behavior.
@@ -50,6 +51,8 @@ This matrix describes repository evidence, not the security posture of any unins
 
 Every enforcement point below is a design proposal. Nothing in this section claims that the named component or control is implemented. Runtime candidate paths in the implementation checklist are filenames for planning only; their language and ownership must be confirmed before implementation.
 
+Each future enforcement change must include and run its corresponding behavioral tests in the same implementation increment. A control is not complete based on code or documentation alone; tests must demonstrate its allow and deny/failure behavior at the stated enforcement boundary.
+
 ### G01 — Default-disabled Copilot
 
 - **Purpose:** Ensure no AI work occurs unless a separately approved, trusted product control enables the relevant use case.
@@ -65,10 +68,10 @@ Every enforcement point below is a design proposal. Nothing in this section clai
 
 - **Purpose:** Restrict eligible AI behavior to OBSERVE, REASON, and RECOMMEND.
 - **Threat/risk:** Model output being treated as an authoritative access/policy decision or action instruction.
-- **Expected behavior:** Use-case capability is fixed by trusted registration; response is labeled advisory and cannot be consumed as an approval, authorization result, or provisioning command.
+- **Expected behavior:** Use-case capability is fixed by trusted registration; after validating provider output, the trusted Accidion AI Gateway/orchestrator establishes and labels the result as advisory. Provider-supplied content or metadata, including an `advisory` field, is never authoritative and cannot be consumed as an approval, authorization result, or provisioning command.
 - **Enforcement point:** Use-case policy, Gateway request/response contract, and host consumer.
 - **Failure behavior:** Unknown operation or non-advisory/invalid response is rejected; no downstream state change occurs.
-- **Required tests:** Unknown capability rejection; response contract requires advisory marker; host consumer cannot turn a recommendation into an action.
+- **Required tests:** Unknown capability rejection; Gateway establishes advisory status independently of provider output; provider-supplied advisory markers cannot affect the trusted status; host consumer cannot turn a recommendation into an action.
 - **Dependencies:** Approved use case, product policy, Gateway/host contract, ADR-007.
 - **Acceptance criteria:** Only approved operations pass; tests prove AI output cannot grant access, approve requests, or trigger state mutation.
 
@@ -109,10 +112,10 @@ Every enforcement point below is a design proposal. Nothing in this section clai
 
 - **Purpose:** Minimize data and ensure a route is eligible for the actual host-assigned data classification.
 - **Threat/risk:** Secret/PII exposure, overbroad identity context, or processing under an incorrect classification.
-- **Expected behavior:** Derive classification from the approved host source; minimize/redact approved inputs; evaluate provider eligibility per use case, class, destination, and conditions; never infer a less restrictive class from content.
-- **Enforcement point:** Host data selection and Gateway pre-route policy/minimization boundary.
-- **Failure behavior:** Missing, unknown, ambiguous, or untrusted classification, or unavailable minimization check, blocks provider transmission.
-- **Required tests:** Classification mismatch, absent/unknown class, synthetic secret markers, unnecessary attributes, redaction behavior, provider call not made on denial.
+- **Expected behavior:** After host authorization, resolve trusted classification metadata within the authenticated tenant and authorized resource scope before retrieving or releasing subject content into the AI path. Minimize/redact only eligible inputs; evaluate provider eligibility per use case, class, destination, and conditions; never infer a less restrictive class from content.
+- **Enforcement point:** Host metadata-only classification check before subject-content retrieval/release to Copilot or the AI Gateway, followed by Gateway pre-route policy/minimization checks before provider request construction/transmission.
+- **Failure behavior:** Missing, unknown, conflicting, or untrusted classification blocks subject-content retrieval for AI processing and provider transmission; unavailable classification or minimization checks fail closed. Do not treat blocking provider transmission alone as sufficient.
+- **Required tests:** Classification metadata is checked before subject-content retrieval; classification mismatch, absent/unknown/conflicting class, synthetic secret markers, unnecessary attributes, redaction behavior, and no content retrieval/provider call on denial.
 - **Dependencies:** Platform classification scheme, approved use-case data map, privacy/security/data-governance review.
 - **Acceptance criteria:** Only minimum permitted fields are routed; each supported class has explicit approved routing rules; all deny paths prove no provider call.
 
@@ -120,10 +123,10 @@ Every enforcement point below is a design proposal. Nothing in this section clai
 
 - **Purpose:** Enforce the proposed absolute rule against transmitting Restricted data to an AI provider.
 - **Threat/risk:** High-impact disclosure or transfer of data explicitly excluded from provider processing.
-- **Expected behavior:** Deny Restricted-class provider processing regardless of provider approval, prompt, user request, or human approval.
-- **Enforcement point:** Deterministic Gateway/policy check immediately before serialization/transmission; host should also prevent prohibited context from entering the AI path.
-- **Failure behavior:** Unknown classification or unavailable decision is also denied; no fallback provider or route.
-- **Required tests:** Restricted classification; attempted downgrade; ambiguous/missing class; assert adapter/network call count is zero.
+- **Expected behavior:** After host authorization, deny Restricted-class AI processing regardless of provider approval, prompt, user request, or human approval. A metadata-only classification lookup may occur, but subject content must not be retrieved/released into Copilot or the AI Gateway for AI processing.
+- **Enforcement point:** Host classification gate before subject-content retrieval/release, with a second deterministic Gateway/policy check before provider request construction/transmission.
+- **Failure behavior:** Unknown, missing, conflicting classification or unavailable decision is also denied before subject-content retrieval for AI processing; no fallback provider or route.
+- **Required tests:** Restricted classification blocks subject-content retrieval and adapter/network calls; attempted downgrade; ambiguous/missing class; zero provider calls.
 - **Dependencies:** Confirmed classification mapping and Security/Privacy/Architecture approval of the rule and boundary.
 - **Acceptance criteria:** No Restricted payload reaches any provider adapter in negative tests; denial is deterministic and auditable without payload logging.
 
@@ -131,10 +134,10 @@ Every enforcement point below is a design proposal. Nothing in this section clai
 
 - **Purpose:** Preserve tenant and actor scope from authenticated host context.
 - **Threat/risk:** Cross-tenant disclosure, forged tenant identity, confused-deputy access, or context leakage via cache/retrieval.
-- **Expected behavior:** Host supplies trusted immutable tenant/actor context; user text and model output never establish authority; all retrieval, cache, audit, and request scopes remain tenant-bound.
+- **Expected behavior:** Host supplies trusted immutable tenant/actor context; user text and model output never establish authority; classification metadata lookup, content retrieval, cache, audit, and request scopes remain tenant-bound.
 - **Enforcement point:** Host authentication/authorization/data-access layer, protected host-to-Gateway boundary, and any retrieval/cache layer.
 - **Failure behavior:** Missing, malformed, conflicting, or caller-controlled context blocks provider routing and data access.
-- **Required tests:** Forged/missing tenant and actor context; cross-tenant resource request; tenant-scoped cache/retrieval; assert denial before data retrieval and provider call.
+- **Required tests:** Forged/missing tenant and actor context; cross-tenant resource or classification-metadata request; tenant-scoped cache/retrieval; assert denial before subject-content retrieval and provider call.
 - **Dependencies:** Host identity and tenant contract, authorization ownership, retrieval/cache design if introduced; maintainer/security approval for boundary changes.
 - **Acceptance criteria:** Negative tests demonstrate no foreign-tenant data access or inference and verify trusted context cannot be overridden.
 
@@ -164,10 +167,10 @@ Every enforcement point below is a design proposal. Nothing in this section clai
 
 - **Purpose:** Treat provider responses as untrusted and preserve explicit refusal/failure semantics.
 - **Threat/risk:** Malformed content accepted, refusal bypassed, provider output claiming approval, or unsafe fallback.
-- **Expected behavior:** Validate correlation, response shape, capability use, output bounds, and use-case schema; preserve refusal; do not retry around refusal or silently switch provider.
+- **Expected behavior:** Treat every provider field and value as untrusted. Validate correlation, response shape, capability use, output bounds, and use-case schema; establish advisory status in the trusted Gateway/orchestrator, never from provider-supplied content or metadata; preserve refusal; do not retry around refusal or silently switch provider.
 - **Enforcement point:** Provider adapter normalization and Gateway post-provider validation.
 - **Failure behavior:** Malformed/unsafe response becomes controlled failure; no downstream use or action; unavailable validation blocks success.
-- **Required tests:** Refusal, malformed/incomplete response, correlation mismatch, unsupported capability, timeout, rate limit, late response, no-fallback behavior.
+- **Required tests:** Refusal, malformed/incomplete response, correlation mismatch, unsupported capability, provider-supplied `"advisory": true` ignored or rejected, Gateway-derived advisory status, timeout, rate limit, late response, no-fallback behavior.
 - **Dependencies:** Approved provider-neutral interface and any explicit provider approval; no provider selection implied by this plan.
 - **Acceptance criteria:** Only validated advisory results can be returned as completed; refusals and errors remain distinguishable; no error body leaks.
 
@@ -251,15 +254,19 @@ All implementation filenames below are **conditional planning candidates**, not 
 1. **Implement default-disabled routing and advisory-only use-case controls.**
    - **Candidate paths:** `ai/guardrails/feature_policy.py`, `ai/guardrails/capability_policy.py`, `ai/gateway/entrypoint.py`; actual host integration path must be named after P0.
    - **Acceptance:** No route executes while disabled; only registered observe/reason/recommend operations can proceed; output cannot represent authorization, approval, or action.
+   - **Behavioral tests required with implementation:** Disabled/missing/invalid flag prevents retrieval and provider calls; unknown capability is rejected; provider-supplied advisory fields cannot establish trusted status; no host action can result.
 2. **Implement deterministic input/classification/context controls.**
    - **Candidate paths:** `ai/guardrails/input_validation.py`, `ai/guardrails/data_policy.py`, `ai/guardrails/trusted_context.py`.
-   - **Acceptance:** Schema and size bounds are enforced; tenant/actor context is host-derived; host authorization remains authoritative; unknown/missing classification fails closed; Restricted data is rejected before adapter invocation; only minimized approved context is passed onward.
+   - **Acceptance:** Schema and size bounds are enforced; tenant/actor context is host-derived; host authorization remains authoritative; trusted classification is checked before subject-content retrieval into the AI path; unknown/missing/conflicting classification and Restricted data are rejected before that retrieval and before adapter invocation; only minimized approved context is passed onward.
+   - **Behavioral tests required with implementation:** Forged/cross-tenant context and host denial are rejected before subject-content retrieval; trusted classification metadata is checked first; Restricted/unknown/missing/conflicting classification prevents subject-content retrieval for AI processing and provider calls; invalid input and unavailable checks fail closed.
 3. **Implement provider-output, refusal, and safe-error controls.**
    - **Candidate paths:** `ai/guardrails/output_validation.py`, `ai/guardrails/safe_errors.py`, `ai/gateway/response_validation.py`.
    - **Acceptance:** Responses must match approved schema and advisory boundary; refusal remains explicit; malformed output, unavailable validation, and provider error produce controlled failure with no fallback or downstream action; sensitive values are not exposed in errors/logs.
+   - **Behavioral tests required with implementation:** Provider output and advisory claims are treated as untrusted; malformed/unsafe output and refusal are handled per contract; unavailable validation fails closed; errors and logs do not disclose synthetic sensitive markers; no downstream action occurs.
 4. **Implement human-review and audit integration only against approved host contracts.**
    - **Candidate paths:** `ai/guardrails/review_policy.py`, `ai/audit/guardrail_events.py`; host workflow/audit paths are determined at P0.
    - **Acceptance:** Required review is represented in the existing workflow; audit records only approved minimal metadata; no AI-generated result bypasses authorization, SoD, or approval.
+   - **Behavioral tests required with implementation:** Missing required review blocks completion/action; audit outcomes are correlated without sensitive content; audit outage follows its approved behavior; no AI result bypasses host authorization or SoD.
 
 ### P2 — Integration and behavioral tests
 

@@ -15,7 +15,7 @@ The `ai/` tree contains governance and proposed-design documents, five synthetic
 Relevant status:
 
 - `ai/gateway/CONTRACTS.md`, `ai/providers/PROVIDER_INTERFACE.md`, `ai/policies/POLICY_ENGINE.md`, `ai/guardrails/README.md`, and `ai/evaluations/HARNESS_DESIGN.md` are design/policy documents, not runtime implementations.
-- `ai/guardrails/` has a proposed README and placeholders; `ai/audit/`, `ai/prompts/`, and `ai/providers/` have placeholders only.
+- `ai/guardrails/` contains the proposed `README.md` and `GUARDRAILS_IMPLEMENTATION_PLAN.md`, plus a `.gitkeep` placeholder; neither document implements runtime controls. `ai/audit/`, `ai/prompts/`, and `ai/providers/` have placeholders only.
 - `services/acc-copilot/`, `services/acc-gateway/`, and the named host services are reserved paths, not demonstrated deployables.
 - ADR-007 remains Proposed, pending Product, Security, and Architecture approval. ADR-008 remains Proposed, pending Product and Delivery approval.
 - There are no existing `acc-copilot` or `acc-gateway` APIs to rely on. Names and responsibilities in this document are proposed boundaries only.
@@ -58,7 +58,7 @@ flowchart TD
     Guard["ai guardrails"]
     Prompt["ai prompts"]
     AIGateway["ai gateway"]
-    Provider["Approved provider adapter"]
+    Provider["Illustrative provider adapter not approved"]
     Audit["Host audit boundary via ai audit"]
     Eval["Synthetic evaluation catalog"]
 
@@ -127,8 +127,8 @@ sequenceDiagram
     participant AIP as ai policies proposed
     participant GR as ai guardrails proposed
     participant Prompt as ai prompts proposed
-    participant Adapter as ai providers approved adapter
-    participant Model as Approved provider model
+    participant Adapter as illustrative provider adapter not approved
+    participant Model as illustrative provider model not approved
     participant Audit as Host audit boundary via ai audit
 
     User->>Portal: Ask why synthetic employee has app access
@@ -157,48 +157,57 @@ sequenceDiagram
                 Edge-->>Portal: Return denial
                 Portal-->>User: Show safe denial
             else Host authorizes scoped read
-                Copilot->>Data: Fetch only authorized identity and access facts
-                Data-->>Copilot: Return scoped facts with provenance
-                Copilot->>AIG: Submit proposed request plus trusted context
-                AIG->>AIP: Check feature use case operation and classification
-                AIP-->>AIG: Return AI-use allow or deny decision
-                alt Restricted or unknown data classification
-                    AIG->>Audit: Record safe classification denial if approved
-                    AIG-->>Copilot: Return denied without provider call
-                    Copilot-->>Edge: Return safe unavailable or refusal
+                Copilot->>Data: Resolve trusted classification metadata within tenant scope
+                Data-->>Copilot: Return classification metadata only
+                alt Restricted or unknown classification
+                    Copilot->>Audit: Record safe classification denial if approved
+                    Copilot-->>Edge: Deny before loading content into the AI path
                     Edge-->>Portal: Return safe response
                     Portal-->>User: Explain request cannot be processed
-                else AI-use policy permits candidate processing
-                    AIG->>GR: Validate and minimize input
-                    alt Guardrails reject or check unavailable
-                        GR-->>AIG: Reject or controlled unavailable
-                        AIG->>Audit: Record safe guardrail outcome if approved
-                        AIG-->>Copilot: Return safe refusal or unavailable
-                        Copilot-->>Edge: Return safe response
+                else Supported classification and scoped authorization
+                    Copilot->>Data: Fetch only authorized identity and access facts
+                    Data-->>Copilot: Return scoped facts with provenance
+                    Copilot->>AIG: Submit proposed request plus trusted context
+                    AIG->>AIP: Recheck classification and AI-use policy before provider routing
+                    AIP-->>AIG: Return AI-use allow or deny decision
+                    alt AI-use policy denies or is unavailable
+                        AIG->>Audit: Record safe policy denial if approved
+                        AIG-->>Copilot: Return denied without provider call
+                        Copilot-->>Edge: Return safe unavailable or refusal
                         Edge-->>Portal: Return safe response
-                        Portal-->>User: Show safe response
-                    else Guardrails pass
-                        AIG->>Prompt: Load approved versioned template
-                        Prompt-->>AIG: Return reviewed template
-                        AIG->>Adapter: Send minimized provider-neutral request
-                        Adapter->>Model: Send only approved content
-                        Model-->>Adapter: Return untrusted result refusal or error
-                        Adapter-->>AIG: Normalize provider outcome
-                        AIG->>GR: Validate schema safety and advisory boundary
-                        alt Provider response unsafe malformed or refused
-                            GR-->>AIG: Reject response or preserve refusal
-                            AIG->>Audit: Record safe terminal outcome if approved
-                            AIG-->>Copilot: Return controlled failure or refusal
+                        Portal-->>User: Explain request cannot be processed
+                    else AI-use policy permits candidate processing
+                        AIG->>GR: Validate and minimize input
+                        alt Guardrails reject or check unavailable
+                            GR-->>AIG: Reject or controlled unavailable
+                            AIG->>Audit: Record safe guardrail outcome if approved
+                            AIG-->>Copilot: Return safe refusal or unavailable
                             Copilot-->>Edge: Return safe response
                             Edge-->>Portal: Return safe response
                             Portal-->>User: Show safe response
-                        else Response validated as advisory
-                            GR-->>AIG: Return validated advisory content
-                            AIG->>Audit: Record minimal completion metadata if approved
-                            AIG-->>Copilot: Return advisory result and provenance
-                            Copilot-->>Edge: Return product explanation
-                            Edge-->>Portal: Return response
-                            Portal-->>User: Display advisory explanation
+                        else Guardrails pass
+                            AIG->>Prompt: Load approved versioned template
+                            Prompt-->>AIG: Return reviewed template
+                            AIG->>Adapter: Send minimized provider-neutral request
+                            Adapter->>Model: Send only approved content
+                            Model-->>Adapter: Return untrusted result refusal or error
+                            Adapter-->>AIG: Normalize provider outcome
+                            AIG->>GR: Validate schema safety and advisory boundary
+                            alt Provider response unsafe malformed or refused
+                                GR-->>AIG: Reject response or preserve refusal
+                                AIG->>Audit: Record safe terminal outcome if approved
+                                AIG-->>Copilot: Return controlled failure or refusal
+                                Copilot-->>Edge: Return safe response
+                                Edge-->>Portal: Return safe response
+                                Portal-->>User: Show safe response
+                            else Response validated as advisory
+                                GR-->>AIG: Return validated advisory content
+                                AIG->>Audit: Record minimal completion metadata if approved
+                                AIG-->>Copilot: Return advisory result and provenance
+                                Copilot-->>Edge: Return product explanation
+                                Edge-->>Portal: Return response
+                                Portal-->>User: Display advisory explanation
+                            end
                         end
                     end
                 end
@@ -263,7 +272,7 @@ An authorization reference is evidence/trace metadata; it is not a token the AI 
 
 ### 5.4 Authorized host evidence
 
-Only the facts the host authorized for this question are provided. Host policy remains distinct from AI-use policy.
+Only the facts the host authorized for this question and classified as eligible for the proposed AI use case are provided. Before fetching subject content into the AI path, the host must resolve trusted classification metadata within the authenticated tenant and authorization scope. Missing, unknown, conflicting, or Restricted classification must stop the flow before subject content is retrieved or released to Copilot/Gateway for AI processing. A metadata-only lookup does not authorize content access; host authorization remains required and authoritative. The Gateway must independently recheck classification before constructing or transmitting a provider request.
 
 ```json
 {
@@ -287,7 +296,7 @@ Only the facts the host authorized for this question are provided. Host policy r
 
 ### 5.5 AI policy decision
 
-An AI `allow` means only that the AI-use conditions permit continuing to the next control; it is never host resource authorization.
+An AI `allow` means only that the AI-use conditions permit continuing to the next control; it is never host resource authorization. The identifier `profile-synth-approved` below is an illustrative placeholder only and does not indicate that any provider or profile is approved.
 
 ```json
 {
@@ -317,7 +326,7 @@ If a guardrail denies or is unavailable, the result must be a non-success status
 
 ### 5.7 Provider request and response
 
-Provider selection is performed only by the AI Gateway from trusted approved configuration. No caller-supplied provider, model, endpoint, or region is accepted.
+Provider selection is performed only by the AI Gateway from trusted approved configuration. No caller-supplied provider, model, endpoint, or region is accepted. `profile-synth-approved` and the provider/model entries in these examples are illustrative placeholders, not actual approvals or a provider selection.
 
 ```json
 {
@@ -337,7 +346,7 @@ Provider selection is performed only by the AI Gateway from trusted approved con
 }
 ```
 
-Illustrative normalized provider response, which remains untrusted until validated:
+Illustrative normalized provider response. Every field and value returned by a provider is untrusted until independently validated; provider-supplied fields, including an `advisory` field, never establish advisory status or authorize an operation.
 
 ```json
 {
@@ -345,14 +354,15 @@ Illustrative normalized provider response, which remains untrusted until validat
   "request_id": "req-synth-1001",
   "outcome": "completed",
   "content": {
-    "explanation": "The synthetic access record shows membership in group-synth-finance, which grants application-reader.",
-    "advisory": true
+    "explanation": "The synthetic access record shows membership in group-synth-finance, which grants application-reader."
   },
   "capabilities_used": [
     "text_generation"
   ]
 }
 ```
+
+The trusted Accidion AI Gateway/orchestrator establishes the advisory status from the approved use case and operation, only after validating provider output. It must not trust provider-supplied content or metadata such as `"advisory": true`; such a field is ignored or rejected and cannot affect authorization, safety, or downstream behavior. The Gateway adds any trusted advisory marker to its own response contract.
 
 ### 5.8 Audit event
 
@@ -375,6 +385,8 @@ Use the approved host audit boundary and schema; do not create a separate source
 ```
 
 ### 5.9 Copilot response to host edge
+
+The `advisory` status shown here must be the trusted status established by the AI Gateway and carried through by Copilot; it must never be copied from provider-supplied output.
 
 ```json
 {
@@ -404,8 +416,8 @@ For all denied/unavailable/disabled outcomes, return a safe status and reason co
 4. **Copilot to host data services:** Copilot requests only minimum evidence after authorization. Directory, graph, policy, and certification services remain authoritative for their own data and decisions.
 5. **Copilot to AI Gateway:** Copilot supplies a registered use case and authorized minimized evidence. User-provided content is untrusted; actor and tenant context remain host-supplied.
 6. **AI Gateway to policy/guardrails:** AI policy is a narrower use-eligibility check. Guardrails perform deterministic request/response validation and fail closed. Neither is a replacement for host authorization.
-7. **AI Gateway to provider:** Only an approved trusted route may transmit approved data classes. Restricted data must never be sent to a provider. Provider/model approval is per use case and data class; an approved provider is not globally approved for all content.
-8. **Provider response to application:** Treat response and provenance as untrusted. Validate schema, bounds, refusal/error status, advisory-only properties, and source references before returning it.
+7. **AI Gateway to provider:** Only an approved trusted route may transmit approved data classes. Trusted host classification and authorization scope must be checked before subject content enters the AI path; metadata-only lookup is the limit for classifying content that may be Restricted or unknown. Missing, unknown, conflicting, or Restricted classification blocks subject-content retrieval for AI processing and provider transmission; classification must never be downgraded. Provider/model approval is per use case and data class; examples here are placeholders, not approvals.
+8. **Provider response to application:** Treat all provider output, including content, metadata, refusal details, and provenance, as untrusted. Validate schema, bounds, refusal/error status, and source references. The trusted Gateway establishes advisory status; provider-supplied advisory markers are never authoritative.
 9. **Audit:** Record only approved minimal metadata through the host boundary. Define retention, access, integrity, and audit-outage behavior before runtime work.
 10. **Evaluation:** Keep fixtures synthetic. Structural validation is not behavioral evaluation. Provider-backed evaluations require separate approvals and must not enable product Copilot.
 
@@ -416,7 +428,7 @@ For all denied/unavailable/disabled outcomes, return a safe status and reason co
 | Copilot disabled, missing flag, or invalid flag state | Return controlled disabled/unavailable result; default remains off. | No |
 | Tenant/actor context missing, malformed, conflicting, or untrusted | Reject before host data access or AI routing. | No |
 | Host authorization denies or is unavailable | Host denial wins; do not retrieve protected evidence or invoke AI. | No |
-| Restricted or unknown data classification | Deny provider processing before serialization/transmission; never downgrade classification. | No |
+| Restricted, unknown, missing, or conflicting data classification | After host authorization, use trusted metadata only to determine classification; do not retrieve/release subject content into the AI path. Deny AI processing and provider transmission; never downgrade classification. | No |
 | AI policy denies, is stale, or cannot be evaluated | Deny/unavailable; an error cannot become allow. | No |
 | Input guardrail rejects or is unavailable | Refuse/unavailable and audit safely under the approved policy. | No |
 | Provider refusal | Preserve explicit refusal; do not retry around it or silently substitute another provider. | Already called |
@@ -468,24 +480,28 @@ Every path below is a proposed destination or existing planning reference, not a
 - **Paths:** Approved implementation files under `services/acc-copilot/`, integration points under `services/acc-gateway/`, and host authn/tenant/authorization service contracts once they exist.
 - **Dependencies:** P1 contracts; host authentication, tenant, authorization and data-access implementations; maintainer approval for security-boundary changes.
 - **Acceptance criteria:** Feature defaults to disabled; authenticated tenant/actor context is host-derived; host authorization runs before data retrieval and AI calls; denied or unavailable authorization causes no AI/provider call; no client-supplied tenant ID is trusted.
+- **Behavioral tests required with implementation:** Disabled-by-default and invalid-flag cases; forged/missing tenant and actor context; host authorization deny/unavailable; assert no protected-content retrieval or AI/provider invocation on each rejection.
 
 ### P3 — Implement AI policy and guardrail enforcement
 
 - **Paths:** Runtime implementation candidates under `ai/policies/` and `ai/guardrails/`; approved Gateway integration under `ai/gateway/`; existing proposals `ai/policies/POLICY_ENGINE.md` and `ai/guardrails/README.md` remain design references.
 - **Dependencies:** P0/P1 approvals; platform classification authority; approved use-case registration and output schema.
-- **Acceptance criteria:** Registered capabilities only; Restricted/missing/unknown classification denied before provider call; minimized input; input/output validation; prompt injection treated as untrusted data; fail-closed errors; no autonomous action capability; human review requirements carried to the host.
+- **Acceptance criteria:** Registered capabilities only; trusted classification metadata is checked after host authorization and before subject-content retrieval into the AI path; Restricted/missing/unknown/conflicting classification is denied before that retrieval and before any provider call; minimized input; input/output validation; prompt injection treated as untrusted data; fail-closed errors; no autonomous action capability; human review requirements carried to the host.
+- **Behavioral tests required with implementation:** Tenant-scoped classification metadata lookup before content retrieval; Restricted/unknown/missing/conflicting classification blocks subject-content retrieval and provider calls; input/output rejection, injection handling, fail-closed policy errors, and no-action assertions.
 
 ### P4 — Implement approved provider and prompt integration
 
 - **Paths:** `ai/providers/`, `ai/prompts/`, and the approved `ai/gateway/` routing implementation.
 - **Dependencies:** Provider/model, data-processing, region, retention, privacy, security, architecture, operations and secret-management approvals; P3 controls.
 - **Acceptance criteria:** Provider is selected only from trusted approved configuration; route is explicitly approved for exact use case/data class; prompts are reviewed/versioned; provider errors/refusals are normalized; no Restricted or unapproved data is transmitted; no direct provider calls from Copilot.
+- **Behavioral tests required with implementation:** Local adapter doubles verify route selection from trusted configuration only, no Restricted/unapproved payload transmission, refusal preservation, and prompt-variable bounds; no live provider call is required.
 
 ### P5 — Implement audit integration and response safety
 
 - **Paths:** `ai/audit/`, host audit integration, Copilot response mapping under `services/acc-copilot/`, and Gateway output validation.
 - **Dependencies:** Approved host audit schema, access/retention/integrity rules, audit outage policy, P3/P4 contracts.
 - **Acceptance criteria:** Decisions and terminal statuses emit minimal approved metadata; sensitive content is not logged by default; unsafe/malformed output is rejected; safe errors do not reveal provider internals; advisory and no-action properties are enforced; audit outage behavior is tested.
+- **Behavioral tests required with implementation:** Provider-supplied advisory markers cannot set trusted status; malformed/unsafe output is rejected; audit/error/log paths omit sensitive content; audit outage follows its approved behavior; no response triggers an action.
 
 ### P6 — Add unit, contract, tenant-isolation, adversarial and behavioral evaluation tests
 
