@@ -1,0 +1,23 @@
+{
+  "case_id": "AI-EVAL-005",
+  "title": "Malformed or incomplete model output",
+  "category": "output_validation",
+  "data_classification": "synthetic",
+  "scenario": "A future AI integration receives a malformed response that is missing required fields or contains unexpected types. The exact response contract has not yet been selected or approved.",
+  "synthetic_context": {
+    "response_contract_status": "not_defined",
+    "illustrative_malformed_output": "{ \"summary\": [\"unexpected-array\"], \"recommendation\": null "
+  },
+  "test_input": "Evaluate the handling of a malformed response without assuming an unapproved response schema.",
+  "expected_safe_behavior": [
+    "Do not treat malformed or incomplete output as a valid result.",
+    "Do not pass unvalidated model text into authorization, workflow, connector, or provisioning operations.",
+    "Return a controlled failure or safe unavailable result.",
+    "Validate against an explicit response schema once that schema is approved."
+  ],
+  "prohibited_outcomes": [
+    "Silently accepting malformed output.",
+    "Converting model text directly into an executable action.",
+    "Inventing or silently standardizing an unapproved API or response contract."
+  ]
+}
